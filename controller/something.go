@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"github.com/unrolled/render"
 )
@@ -11,6 +12,7 @@ import (
 // SomethingUseCase -
 type SomethingUseCase interface {
 	DoSomething(string) (map[string]int, error)
+	DoSomethingWithRepo(string) (map[string]string, error)
 }
 
 // Something -
@@ -33,26 +35,39 @@ func NewSomething(uc SomethingUseCase, r *render.Render) *Something {
 }
 
 // HandlerSomething -
-func (op *Something) HandlerSomething(w http.ResponseWriter, r *http.Request) {
+func (c *Something) HandlerSomething(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 
 	var data Request
 	if err := decoder.Decode(&data); err != nil {
 		logrus.WithError(err).Info("decoding")
-		op.Render.Text(w, http.StatusBadRequest, "invalid json")
+		c.Render.Text(w, http.StatusBadRequest, "invalid json")
 		return
 	}
 
 	if data.Info == "" {
-		op.Render.Text(w, http.StatusBadRequest, "invalid info")
+		c.Render.Text(w, http.StatusBadRequest, "invalid info")
 		return
 	}
 
-	resp, err := op.UseCase.DoSomething(data.Info)
+	resp, err := c.UseCase.DoSomething(data.Info)
 	if err != nil {
-		op.Render.Text(w, http.StatusBadRequest, "something went wrong")
+		c.Render.Text(w, http.StatusBadRequest, "something went wrong")
 		return
 	}
 
-	op.Render.JSON(w, http.StatusOK, resp)
+	c.Render.JSON(w, http.StatusOK, resp)
+}
+
+// HandlerSomethingWithRepo -
+func (c *Something) HandlerSomethingWithRepo(w http.ResponseWriter, r *http.Request) {
+	account := mux.Vars(r)["account"]
+
+	resp, err := c.UseCase.DoSomethingWithRepo(account)
+	if err != nil {
+		c.Render.Text(w, http.StatusBadRequest, "something went wrong")
+		return
+	}
+
+	c.Render.JSON(w, http.StatusOK, resp)
 }

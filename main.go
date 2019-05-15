@@ -8,6 +8,7 @@ import (
 
 	"github.com/eiizu/go-service/controller"
 	"github.com/eiizu/go-service/router"
+	"github.com/eiizu/go-service/repository"
 	"github.com/eiizu/go-service/usecase"
 
 	"github.com/codegangsta/negroni"
@@ -23,11 +24,13 @@ const (
 
 func main() {
 
+	repo := repository.New()
+
 	logger := logrus.New()
 	myRender := render.New()
 
 	// UseCase init
-	somethingUC := usecase.NewSomething()
+	somethingUC := usecase.NewSomething(repo)
 	statusUC := usecase.NewStatus(AppName)
 
 	// Controller init

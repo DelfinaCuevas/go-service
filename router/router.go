@@ -16,6 +16,7 @@ type StatusController interface {
 // SomethingController -
 type SomethingController interface {
 	HandlerSomething(w http.ResponseWriter, r *http.Request)
+	HandlerSomethingWithRepo(w http.ResponseWriter, r *http.Request)
 }
 
 // New -
@@ -25,6 +26,7 @@ func New(somethingC SomethingController, statusC StatusController) *mux.Router {
 	r.HandleFunc("/statusz", statusC.HandlerStatusz).Methods(http.MethodGet)
 	r.HandleFunc("/healthz", statusC.HandlerHealthz).Methods(http.MethodGet)
 
+	r.HandleFunc("/account/{account}", somethingC.HandlerSomethingWithRepo).Methods(http.MethodGet)
 	r.HandleFunc("/operation", somethingC.HandlerSomething).Methods(http.MethodPost)
 
 	return r
