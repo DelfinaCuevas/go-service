@@ -1,5 +1,7 @@
 module github.com/eiizu/go-service
 
+go 1.15
+
 require (
 	github.com/eknkc/amber v0.0.0-20171010120322-cdade1c07385 // indirect
 	github.com/golang/mock v1.3.1

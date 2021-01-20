@@ -11,6 +11,8 @@ func TestNew(t *testing.T) {
 	type args struct {
 		somethingC SomethingController
 		statusC    StatusController
+		userC      UsersController
+		bookC      BooksController
 	}
 	tests := []struct {
 		name string
@@ -21,7 +23,7 @@ func TestNew(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := New(tt.args.somethingC, tt.args.statusC); !reflect.DeepEqual(got, tt.want) {
+			if got := New(tt.args.somethingC, tt.args.statusC, tt.args.userC, tt.args.bookC); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("New() = %v, want %v", got, tt.want)
 			}
 		})

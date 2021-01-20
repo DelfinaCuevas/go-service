@@ -9,7 +9,6 @@ import (
 	"github.com/eiizu/go-service/router"
 	"github.com/eiizu/go-service/service"
 	"github.com/eiizu/go-service/usecase"
-
 	"github.com/sirupsen/logrus"
 )
 
@@ -28,13 +27,17 @@ func main() {
 	// UseCase init
 	somethingUC := usecase.NewSomething(someService)
 	statusUC := usecase.NewStatus(AppName)
+	userUC := usecase.NewUsers()
+	bookUC := usecase.NewBooks()
 
 	// Controller init
 	somethingC := controller.NewSomething(somethingUC)
 	statusC := controller.NewStatus(statusUC)
+	userC := controller.NewUsers(userUC) // se inicializa el user controller
+	bookC := controller.NewBooks(bookUC)
 
 	// Create router
-	r := router.New(somethingC, statusC)
+	r := router.New(somethingC, statusC, userC, bookC)
 
 	// Define stop signal for the end of excecution
 	stop := make(chan os.Signal, 1)
