@@ -5,12 +5,12 @@ import (
 )
 
 // Status -
-type Status struct{
+type Status struct {
 	AppName string
 }
 
 // NewStatus -
-func NewStatus(AppName string) *Status{
+func NewStatus(AppName string) *Status {
 	return &Status{
 		AppName: AppName,
 	}
@@ -18,7 +18,7 @@ func NewStatus(AppName string) *Status{
 
 // Statusz -
 func (*Status) Statusz() (string, error) {
-	return "chilling", nil
+	return "Libreria!", nil
 }
 
 // Healthz -
