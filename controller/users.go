@@ -11,8 +11,8 @@ import (
 type UserUseCase interface {
 	GetUser(string) (*entity.User, error)
 	GetUsers() ([]entity.User, error)
-	CreateUser(string, string, string, string) (*entity.User, error)
-	UpdateUser(string, string, string, string) (*entity.User, error)
+	CreateUser(entity.User) (*entity.User, error)
+	UpdateUser(entity.User) (*entity.User, error)
 	DeleteUser(string) (*entity.User, error)
 }
 
@@ -27,8 +27,7 @@ func NewUsers(user UserUseCase) *Users {
 }
 
 func (u *Users) GetUser(c echo.Context) error {
-	id := c.Param("id")
-	resp, err := u.UseCase.GetUser(id) //aqui va el id
+	resp, err := u.UseCase.GetUser(c.Param("id")) //aqui va el id
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
@@ -40,7 +39,6 @@ func (u *Users) GetUsers(c echo.Context) error {
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
-
 	return c.JSON(http.StatusOK, resp)
 }
 
@@ -64,16 +62,14 @@ func (u *Users) CreateUser(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "invalid phone")
 	}
 
-	resp, err := u.UseCase.CreateUser(data.Email, data.Name, data.Address, data.Phone)
+	usr, err := u.UseCase.CreateUser(data)
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, usr)
 }
 
 func (u *Users) UpdateUser(c echo.Context) error { //Funcion update(Put) va asi?
-	id := c.Param("id")
-
 	var data entity.User
 
 	decoder := json.NewDecoder(c.Request().Body)
@@ -82,7 +78,8 @@ func (u *Users) UpdateUser(c echo.Context) error { //Funcion update(Put) va asi?
 		return c.String(http.StatusBadRequest, "invalid json")
 	}
 
-	resp, err := u.UseCase.UpdateUser(id, data.Name, data.Address, data.Phone) //aqui va algo?
+	data.Email = c.Param("id")
+	resp, err := u.UseCase.UpdateUser(data) //aqui va algo?
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
@@ -90,8 +87,7 @@ func (u *Users) UpdateUser(c echo.Context) error { //Funcion update(Put) va asi?
 }
 
 func (u *Users) DeleteUser(c echo.Context) error { //Funcion delete(DELETE) va asi?
-	id := c.Param("id")
-	resp, err := u.UseCase.DeleteUser(id) //aqui va algo?
+	resp, err := u.UseCase.DeleteUser(c.Param("id")) //aqui va algo?
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}

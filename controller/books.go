@@ -10,9 +10,9 @@ import (
 
 type BooksUseCase interface {
 	GetBook(string) (*entity.Book, error)
-	GetBooks() (*entity.Book, error)
-	CreateBook(string, int, string) (*entity.Book, error)
-	UpdateBook(string, int, string) (*entity.Book, error)
+	GetBooks() ([]entity.Book, error)
+	CreateBook(entity.Book) (*entity.Book, error)
+	UpdateBook(string, entity.Book) (*entity.Book, error)
 	DeleteBook(string) (*entity.Book, error)
 }
 
@@ -39,7 +39,6 @@ func (b *Books) GetBooks(c echo.Context) error {
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
-
 	return c.JSON(http.StatusOK, resp)
 }
 
@@ -53,15 +52,19 @@ func (b *Books) CreateBook(c echo.Context) error {
 	}
 
 	switch {
-	case data.Name == "":
+	case data.Tittle == "":
 		return c.String(http.StatusBadRequest, "invalid name")
 	case data.Pages <= 0:
 		return c.String(http.StatusBadRequest, "invalid addres")
 	case data.Category == "":
 		return c.String(http.StatusBadRequest, "invalid phone")
+	case data.Author == "":
+		return c.String(http.StatusBadRequest, "invalid phone")
+	case data.Copies == 0:
+		return c.String(http.StatusBadRequest, "invalid phone")
 	}
 
-	resp, err := b.UseCase.CreateBook(data.Name, data.Pages, data.Category)
+	resp, err := b.UseCase.CreateBook(data)
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
@@ -71,20 +74,12 @@ func (b *Books) CreateBook(c echo.Context) error {
 func (b *Books) UpdateBook(c echo.Context) error {
 	var data entity.Book
 	decoder := json.NewDecoder(c.Request().Body)
-
 	if err := decoder.Decode(&data); err != nil {
 		return c.String(http.StatusBadRequest, "invalid json")
 	}
 
-	switch {
-	case data.Name == "":
-		return c.String(http.StatusBadRequest, "invalid name")
-	case data.Pages <= 0:
-		return c.String(http.StatusBadRequest, "invalid addres")
-	case data.Category == "":
-		return c.String(http.StatusBadRequest, "invalid phone")
-	}
-	resp, err := b.UseCase.UpdateBook(data.Name, data.Pages, data.Category)
+	resp, err := b.UseCase.UpdateBook(c.Param("id"), data)
+
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}

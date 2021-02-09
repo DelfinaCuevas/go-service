@@ -31,8 +31,14 @@ type BooksController interface {
 	DeleteBook(c echo.Context) error
 }
 
+type LoansController interface {
+	GetLoans(c echo.Context) error
+	CreateLoan(c echo.Context) error
+	UpdateLoan(c echo.Context) error
+}
+
 // New -
-func New(somethingC SomethingController, statusC StatusController, userC UsersController, bookC BooksController) *echo.Echo {
+func New(somethingC SomethingController, statusC StatusController, userC UsersController, bookC BooksController, loanC LoansController) *echo.Echo {
 	e := echo.New()
 
 	e.GET("/statusz", statusC.HandlerStatusz)
@@ -52,6 +58,11 @@ func New(somethingC SomethingController, statusC StatusController, userC UsersCo
 	e.POST("/books", bookC.CreateBook)       //Crear un libro nuevo
 	e.PUT("/books/:id", bookC.UpdateBook)    //Modificar un libro en especifico
 	e.DELETE("/books/:id", bookC.DeleteBook) //Eliminar un libro
+
+	//---------LOANS--------////
+	e.GET("/loans", loanC.GetLoans)
+	e.POST("/loans", loanC.CreateLoan)
+	e.PUT("/loans/:id", loanC.UpdateLoan)
 
 	return e
 }
