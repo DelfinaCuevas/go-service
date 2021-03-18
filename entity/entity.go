@@ -20,7 +20,7 @@ type Book struct {
 }
 
 type Loan struct {
-	Id         int      `json:"id"`
+	Uuid       string   `json:"id"`
 	Loan_Book  []string `json:"loan_book"`
 	Loan_User  string   `json:"loan_user"`
 	Date_Begin string   `json:"date_begin"`

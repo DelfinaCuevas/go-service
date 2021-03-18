@@ -8,16 +8,15 @@ import (
 	"github.com/labstack/echo"
 )
 
+//go:generate mockgen -destination=./mocks/mock_usecase_loans.go -package=mocks github.com/eiizu/go-service/controller LoansUseCase
 type LoansUseCase interface {
-	GetLoans(string, string) (map[int]entity.Loan, error)
+	GetLoans(map[string]string) (map[string]entity.Loan, error)
 	CreateLoan(entity.Loan) (*entity.Loan, error)
-	UpdateLoan(string, entity.Loan) (*entity.Loan, error)
+	UpdateLoan(entity.Loan) (*entity.Loan, error)
 }
 
 type Loans struct {
 	UseCaseLoan LoansUseCase
-	UseCaseBook BooksUseCase
-	UseCaseUser UserUseCase
 }
 
 func NewLoans(loan LoansUseCase) *Loans {
@@ -27,7 +26,11 @@ func NewLoans(loan LoansUseCase) *Loans {
 }
 
 func (l *Loans) GetLoans(c echo.Context) error {
-	resp, err := l.UseCaseLoan.GetLoans(c.QueryParam("book"), c.QueryParam("user")) // buscar por parametro, sacar del body
+	parameters := make(map[string]string)
+	parameters["book"] = c.QueryParam("book")
+	parameters["user"] = c.QueryParam("user")
+	parameters["uuid"] = c.QueryParam("uuid")
+	resp, err := l.UseCaseLoan.GetLoans(parameters)
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
@@ -41,13 +44,6 @@ func (l *Loans) CreateLoan(c echo.Context) error {
 	if err := decoder.Decode(&data); err != nil {
 		return c.String(http.StatusBadRequest, "invalid json")
 	}
-
-	switch {
-	case data.Loan_User == "":
-		return c.String(http.StatusBadRequest, "invalid addres")
-	}
-	data.Date_End = ""
-	data.State = "Loan"
 
 	res, er := l.UseCaseLoan.CreateLoan(data)
 	if er != nil {
@@ -64,19 +60,10 @@ func (l *Loans) UpdateLoan(c echo.Context) error {
 		return c.String(http.StatusBadRequest, "invalid json")
 	}
 
-	switch {
-	case data.Date_End == "":
-		return c.String(http.StatusBadRequest, "invalid date")
-	case data.Coments == "":
-		return c.String(http.StatusBadRequest, "invalid coments")
-	case data.State == "":
-		return c.String(http.StatusBadRequest, "invalid state")
-	}
-
-	resp, err := l.UseCaseLoan.UpdateLoan(c.Param("id"), data)
-
+	data.Uuid = c.Param("id")
+	res, err := l.UseCaseLoan.UpdateLoan(data)
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
-	return c.JSON(http.StatusOK, resp)
+	return c.JSON(http.StatusOK, res)
 }

@@ -13,7 +13,7 @@ type UserUseCase interface {
 	GetUsers() ([]entity.User, error)
 	CreateUser(entity.User) (*entity.User, error)
 	UpdateUser(entity.User) (*entity.User, error)
-	DeleteUser(string) (*entity.User, error)
+	DeleteUser(string) (string, error)
 }
 
 type Users struct {
@@ -27,7 +27,7 @@ func NewUsers(user UserUseCase) *Users {
 }
 
 func (u *Users) GetUser(c echo.Context) error {
-	resp, err := u.UseCase.GetUser(c.Param("id")) //aqui va el id
+	resp, err := u.UseCase.GetUser(c.Param("id"))
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
@@ -46,22 +46,9 @@ func (u *Users) CreateUser(c echo.Context) error {
 	var data entity.User
 
 	decoder := json.NewDecoder(c.Request().Body)
-
 	if err := decoder.Decode(&data); err != nil {
 		return c.String(http.StatusBadRequest, "invalid json")
 	}
-
-	switch {
-	case data.Email == "":
-		return c.String(http.StatusBadRequest, "invalid email")
-	case data.Name == "":
-		return c.String(http.StatusBadRequest, "invalid name")
-	case data.Address == "":
-		return c.String(http.StatusBadRequest, "invalid addres")
-	case data.Phone == "":
-		return c.String(http.StatusBadRequest, "invalid phone")
-	}
-
 	usr, err := u.UseCase.CreateUser(data)
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
@@ -69,7 +56,7 @@ func (u *Users) CreateUser(c echo.Context) error {
 	return c.JSON(http.StatusOK, usr)
 }
 
-func (u *Users) UpdateUser(c echo.Context) error { //Funcion update(Put) va asi?
+func (u *Users) UpdateUser(c echo.Context) error {
 	var data entity.User
 
 	decoder := json.NewDecoder(c.Request().Body)
@@ -79,15 +66,15 @@ func (u *Users) UpdateUser(c echo.Context) error { //Funcion update(Put) va asi?
 	}
 
 	data.Email = c.Param("id")
-	resp, err := u.UseCase.UpdateUser(data) //aqui va algo?
+	resp, err := u.UseCase.UpdateUser(data)
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}
 	return c.JSON(http.StatusOK, resp)
 }
 
-func (u *Users) DeleteUser(c echo.Context) error { //Funcion delete(DELETE) va asi?
-	resp, err := u.UseCase.DeleteUser(c.Param("id")) //aqui va algo?
+func (u *Users) DeleteUser(c echo.Context) error {
+	resp, err := u.UseCase.DeleteUser(c.Param("id"))
 	if err != nil {
 		return c.String(http.StatusBadRequest, err.Error())
 	}

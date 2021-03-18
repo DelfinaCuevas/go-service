@@ -3,12 +3,17 @@ package store
 import (
 	"fmt"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/eiizu/go-service/entity"
 	_ "github.com/lib/pq"
 )
 
 func (st *Store) GetUsers() ([]entity.User, error) {
-	rows, err := st.DB.Query(`SELECT * FROM users`)
+	query, _, _ := sq.
+		Select(`*`).
+		From(`public.users`).ToSql()
+
+	rows, err := st.DB.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("The table is empty")
 	}
@@ -29,12 +34,16 @@ func (st *Store) GetUsers() ([]entity.User, error) {
 }
 
 func (st *Store) GetUser(key string) (*entity.User, error) {
-	rows, err := st.DB.Query(`SELECT * FROM users WHERE email=$1`, key)
+	query, _, _ := sq.
+		Select(`*`).
+		From(`public.users`).
+		Where(`email = $1`).ToSql()
+
+	rows, err := st.DB.Query(query, key)
 	if err != nil {
-		return nil, fmt.Errorf("The table is empty")
+		return nil, err
 	}
 
-	defer rows.Close()
 	var us entity.User
 
 	for rows.Next() {
@@ -43,22 +52,37 @@ func (st *Store) GetUser(key string) (*entity.User, error) {
 			return nil, err
 		}
 	}
-	if us.Id == 0 {
-		return &us, fmt.Errorf("User doesn't exist!")
+
+	if us.Name == "" {
+		return nil, fmt.Errorf("User doesn't exist!")
 	}
-	return &us, err
+	return &us, nil
 }
 
 func (st *Store) CreateUser(data entity.User) (*entity.User, error) {
 	us, err := st.GetUser(data.Email)
 	if err == nil {
-		return nil, fmt.Errorf("the User already exist")
+		return nil, fmt.Errorf("The User already exist")
 	}
-	_, err = st.DB.Query(`INSERT INTO public.users(name, lastname, email, address, phone) VALUES ($1,$2,$3,$4,$5)`, data.Name, data.Lastname, data.Email, data.Address, data.Phone)
+
+	query, _, _ := sq.
+		Insert(`public.users`).
+		Columns(`name`, `lastname`, `email`, `address`, `phone`).
+		Values(`$1`, `$2`, `$3`, `$4`, `$5`).
+		PlaceholderFormat(sq.Dollar).ToSql()
+
+	fmt.Println(query)
+
+	_, err = st.DB.Query(query, data.Name, data.Lastname, data.Email, data.Address, data.Phone)
 	if err != nil {
 		return nil, fmt.Errorf("something went wrong")
 	}
-	us, _ = st.GetUser(data.Email)
+
+	us, err = st.GetUser(data.Email)
+	if err != nil {
+		return nil, fmt.Errorf("something went wrong")
+	}
+
 	return us, err
 }
 
@@ -67,9 +91,18 @@ func (st *Store) UpdateUser(data entity.User) (*entity.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = st.DB.Query(`UPDATE public.users SET name=$1, lastname=$2, address=$3, phone=$4 WHERE email=$5`, data.Name, data.Lastname, data.Address, data.Phone, data.Email)
+	query, _, _ := sq.
+		Update("public.users").
+		Set("name", "$1").
+		Set("lastname", "$2").
+		Set("address", "$3").
+		Set("phone", "$4").
+		Where("email = $5").
+		PlaceholderFormat(sq.Dollar).ToSql()
+
+	_, err = st.DB.Query(query, data.Name, data.Lastname, data.Address, data.Phone, data.Email)
 	if err != nil {
-		return nil, fmt.Errorf("User doesn't exist")
+		return nil, err
 	}
 	us, _ = st.GetUser(data.Email)
 	return us, err
@@ -80,10 +113,14 @@ func (st *Store) DeleteUser(key string) (*entity.User, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = st.DB.Query(`DELETE FROM public.users WHERE email=$1`, key)
+	query, _, _ := sq.
+		Delete(`public.users`).
+		Where(`email = $1`).ToSql()
+
+	_, err = st.DB.Query(query, key)
 	if err != nil {
 		return nil, fmt.Errorf("Something went wrong")
 	}
-	us, _ = st.GetUser(key)
+	_, err = st.GetUser(key)
 	return us, err
 }

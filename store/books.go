@@ -3,14 +3,20 @@ package store
 import (
 	"fmt"
 
+	sq "github.com/Masterminds/squirrel"
 	"github.com/eiizu/go-service/entity"
 	_ "github.com/lib/pq"
 )
 
 func (st *Store) GetBooks() ([]entity.Book, error) {
-	rows, err := st.DB.Query(`SELECT B.id, B.tittle, B.pages, B.copies, B.available, C.cathegory, A.author 
-								FROM public.books B LEFT JOIN public.cathegory C ON B.cathegory_id = C.id 
-								LEFT JOIN public.author A ON B.author_id = A.id`)
+	query, _, _ := sq.
+		Select(`B.id, B.tittle, B.pages, B.copies, B.available, C.cathegory, A.author`).
+		From(`public.books B`).
+		LeftJoin(`public.cathegory C ON B.cathegory_id = C.id`).
+		LeftJoin(`public.author A ON B.author_id = A.id`).
+		OrderBy(`B.id`).ToSql()
+
+	rows, err := st.DB.Query(query)
 	if err != nil {
 		return nil, fmt.Errorf("The table is empty")
 	}
@@ -31,9 +37,14 @@ func (st *Store) GetBooks() ([]entity.Book, error) {
 }
 
 func (st *Store) GetBook(key string) (*entity.Book, error) {
-	rows, err := st.DB.Query(`SELECT B.id, B.tittle, B.pages, B.copies, B.available, C.cathegory, A.author 
-								FROM public.books B LEFT JOIN public.cathegory C ON B.cathegory_id = C.id 
-								LEFT JOIN public.author A ON B.author_id = A.id where B.tittle = $1`, key)
+	query, _, _ := sq.
+		Select(`B.id, B.tittle, B.pages, B.copies, B.available, C.cathegory, A.author`).
+		From(`public.books B`).
+		LeftJoin(`public.cathegory C ON B.cathegory_id = C.id`).
+		LeftJoin(`public.author A ON B.author_id = A.id`).
+		Where(`B.tittle = $1`).PlaceholderFormat(sq.Dollar).ToSql()
+
+	rows, err := st.DB.Query(query, key)
 	if err != nil {
 		return nil, fmt.Errorf("The table is empty")
 	}
@@ -58,6 +69,34 @@ func (st *Store) CreateBook(data entity.Book) (*entity.Book, error) {
 	if err == nil {
 		return nil, fmt.Errorf("the Book already exist")
 	}
+	id_author, err := st.GetAuthor(data.Author)
+	if err != nil {
+		return nil, fmt.Errorf("Author unknow")
+	}
+	id_cathegory, er := st.GetCathegory(data.Category)
+	if er != nil {
+		return nil, fmt.Errorf("Cathegory unknow")
+	}
+	query, _, _ := sq.Insert(`public.books`).
+		Columns(`pages`, `copies`, `available`, `cathegory_id`, `author_id`, `tittle`).
+		Values(`$1`, `$2`, `$3`, `$4`, `$5`, `$6`).
+		PlaceholderFormat(sq.Dollar).ToSql()
+
+	_, err = st.DB.Query(query, data.Pages, data.Copies, data.Available, id_cathegory,
+		id_author, data.Tittle)
+
+	if err != nil {
+		return nil, fmt.Errorf("something went wrong")
+	}
+	bk, _ = st.GetBook(data.Tittle)
+	return bk, err
+}
+
+func (st *Store) UpdateBook(key string, data entity.Book) (*entity.Book, error) {
+	bk, err := st.GetBook(key)
+	if err != nil {
+		return nil, err
+	}
 	if data.Author == "" {
 		data.Author = bk.Author
 	}
@@ -79,54 +118,82 @@ func (st *Store) CreateBook(data entity.Book) (*entity.Book, error) {
 		return nil, fmt.Errorf("Cathegory unknow")
 	}
 
-	_, err = st.DB.Query(`INSERT INTO public.books(pages, copies, available, cathegory_id, author_id, tittle) 
-							VALUES ($1,$2,$3,$4,$5,$6)`, data.Pages, data.Copies, data.Available, id_cathegory,
-		id_author, data.Tittle)
+	query, _, _ := sq.
+		Update(`public.books`).
+		Set(`pages`, `$1`).
+		Set(`copies`, `$2`).
+		Set(`available`, `$3`).
+		Set(`cathegory_id`, `$4`).
+		Set(`author_id`, `$5`).
+		Set(`tittle`, `$6`).
+		Where(`id = $7`).
+		PlaceholderFormat(sq.Dollar).ToSql()
+
+	_, err = st.DB.Query(query, data.Pages, data.Copies, data.Available, id_cathegory, id_author, data.Tittle, bk.Id)
 
 	if err != nil {
-		return nil, fmt.Errorf("something went wrong")
+		return nil, fmt.Errorf("User doesn't exist")
 	}
 	bk, _ = st.GetBook(data.Tittle)
 	return bk, err
 }
 
-func (st *Store) UpdateBook(key string, data entity.Book) (*entity.Book, error) {
-	us, err := st.GetBook(key)
+func (st *Store) DeleteBook(key string) error {
+	_, err := st.GetBook(key)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	id_author, er := st.GetAuthor(data.Author)
-	if er != nil {
-		return nil, fmt.Errorf("Author unknow")
-	}
-	id_cathegory, er := st.GetCathegory(data.Category)
-	if er != nil {
-		return nil, fmt.Errorf("Cathegory unknow")
-	}
+	query, _, _ := sq.
+		Delete(`public.books`).
+		Where(`tittle=$1`).ToSql()
 
-	_, err = st.DB.Query(`UPDATE public.books SET pages=$1, copies=$2, available=$3, cathegory_id=$4, author_id=$5, tittle=$6
-							WHERE id = $7`, data.Pages, data.Copies, data.Available, id_cathegory, id_author, data.Tittle, us.Id)
-
+	_, err = st.DB.Query(query, key)
 	if err != nil {
-		return nil, fmt.Errorf("User doesn't exist")
-	}
-	us, _ = st.GetBook(data.Tittle)
-	return us, err
-}
-
-func (st *Store) DeleteBook(key string) (*entity.Book, error) {
-	fmt.Printf(key)
-	us, err := st.GetBook(key)
-	if err != nil {
-		return nil, err
-	}
-	_, err = st.DB.Query(`DELETE FROM public.books WHERE tittle=$1`, key)
-	if err != nil {
-		return nil, fmt.Errorf("Something went wrong")
+		return fmt.Errorf("Something went wrong")
 	}
 	_, err = st.GetBook(key)
-	return us, err
+	return err
 }
 
-//SELECT B.id, B.tittle, B.pages, B.copies, B.available, C.description as cathegory, A.name as author FROM public.books B LEFT JOIN public.cathegory C ON B.cathegory_id = C.id LEFT JOIN public.author A ON B.author_id = A.id;
-//INSERT INTO public.books(pages, copies, available, cathegory_id, author_id, tittle) VALUES ('" + data.Pages + "','" + data.Copies + "', '" + data.Available + "', '" + id_cathegory + "', '" + id_author + "', '"+ data.Tittle + "')
+func (st *Store) GetCathegory(cathegory string) (int, error) {
+	query, _, _ := sq.
+		Select(`id`).
+		From(`public.cathegory`).
+		Where(`cathegory=$1`).ToSql()
+	rows, err := st.DB.Query(query, cathegory)
+	if err != nil {
+		return 0, fmt.Errorf("The table is empty")
+	}
+	defer rows.Close()
+
+	var id int
+	for rows.Next() {
+		err := rows.Scan(&id)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return id, err
+}
+
+func (st *Store) GetAuthor(author string) (int, error) {
+	query, _, _ := sq.
+		Select(`id`).
+		From(`public.author`).
+		Where(`author=$1`).ToSql()
+
+	rows, err := st.DB.Query(query, author)
+	if err != nil {
+		return 0, fmt.Errorf("The table is empty")
+	}
+	var id int
+	defer rows.Close()
+
+	for rows.Next() {
+		err := rows.Scan(&id)
+		if err != nil {
+			return 0, err
+		}
+	}
+	return id, nil
+}

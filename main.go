@@ -10,6 +10,7 @@ import (
 	"github.com/eiizu/go-service/service"
 	"github.com/eiizu/go-service/store"
 	"github.com/eiizu/go-service/usecase"
+	"github.com/labstack/echo/middleware"
 	_ "github.com/lib/pq"
 	"github.com/sirupsen/logrus"
 )
@@ -48,7 +49,13 @@ func main() {
 
 	// Create router
 	r := router.New(somethingC, statusC, userC, bookC, loanC)
-
+	r.Use(middleware.SecureWithConfig(middleware.SecureConfig{
+		XSSProtection:         "",
+		ContentTypeNosniff:    "",
+		XFrameOptions:         "",
+		HSTSMaxAge:            3600,
+		ContentSecurityPolicy: "delfault-src 'self'",
+	}))
 	// Define stop signal for the end of excecution
 	stop := make(chan os.Signal, 1)
 	signal.Notify(
